@@ -1,13 +1,17 @@
+// This file contains all the logic for customer authentication.
+
 const Customer = require("../models/customer.model");
 const generateTokenAndSetCookie = require("../utils/generateToken");
-const bcrypt = require("bcrypt");
 
-// POST /customers/register
-const register = async (req, res) => {
+// ---------------------------------------------------
+// 1. REGISTER
+// ---------------------------------------------------
+
+async function registerCustomer(req, res) {
   try {
     const { fullName, email, password, phone } = req.body;
 
-    // Check all fields are provided
+    // Check all fields are present
     if (!fullName || !email || !password || !phone) {
       return res.status(400).json({
         success: false,
@@ -15,24 +19,27 @@ const register = async (req, res) => {
       });
     }
 
-    // Validate password length
+    // Check password length
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters",
+        message: "Password must be at least 6 characters long",
       });
     }
 
     // Check if email already exists
     const existingCustomer = await Customer.findOne({ email });
+
     if (existingCustomer) {
       return res.status(409).json({
         success: false,
-        message: "Email already exists",
+        message: "Email already registered",
       });
     }
 
-    // Create new customer (password is hashed by the pre-save hook)
+    // Create customer
+    // Password will be hashed automatically
+    // by customer.model.js pre-save middleware
     const customer = await Customer.create({
       fullName,
       email,
@@ -40,7 +47,8 @@ const register = async (req, res) => {
       phone,
     });
 
-    res.status(201).json({
+    // Send response without password
+    return res.status(201).json({
       success: true,
       message: "Customer registered successfully",
       customer: {
@@ -52,18 +60,24 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error("Register Error:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Something went wrong",
+      error: error.message,
     });
   }
-};
+}
 
-// POST /customers/login
-const login = async (req, res) => {
+// ---------------------------------------------------
+// 2. LOGIN
+// ---------------------------------------------------
+
+async function loginCustomer(req, res) {
   try {
     const { email, password } = req.body;
 
+    // Check required fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -73,115 +87,160 @@ const login = async (req, res) => {
 
     // Find customer by email
     const customer = await Customer.findOne({ email });
+
     if (!customer) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
-    // Compare passwords
-    const isMatch = await customer.comparePassword(password);
-    if (!isMatch) {
+    // Compare entered password with hashed password
+    const isPasswordCorrect = await customer.comparePassword(password);
+
+    if (!isPasswordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
-    // Generate JWT and set HttpOnly cookie
+    // Generate JWT and store it in HttpOnly cookie
     generateTokenAndSetCookie(res, customer._id);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Login successful",
     });
   } catch (error) {
     console.error("Login Error:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Something went wrong",
+      error: error.message,
     });
   }
-};
+}
 
-// GET /customers/me
-const getProfile = async (req, res) => {
+// ---------------------------------------------------
+// 3. MY PROFILE
+// ---------------------------------------------------
+
+async function getMyProfile(req, res) {
   try {
-    res.status(200).json(req.user);
+    // authenticate middleware adds req.user
+    return res.status(200).json(req.user);
   } catch (error) {
-    res.status(500).json({
+    console.error("Profile Error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Something went wrong",
+      error: error.message,
     });
   }
-};
+}
 
-// POST /customers/logout
-const logout = async (req, res) => {
+// ---------------------------------------------------
+// 4. LOGOUT
+// ---------------------------------------------------
+
+async function logoutCustomer(req, res) {
   try {
-    res.cookie("token", "", {
-      httpOnly: true,
-      expires: new Date(0),
-    });
+    // Remove JWT cookie
+    res.clearCookie("token");
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Logged out successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Logout Error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Something went wrong",
+      error: error.message,
     });
   }
-};
+}
 
-// PATCH /customers/change-password 
-const changePassword = async (req, res) => {
+// ---------------------------------------------------
+// 5. CHANGE PASSWORD
+// ---------------------------------------------------
+
+async function changePassword(req, res) {
   try {
     const { oldPassword, newPassword } = req.body;
 
+    // Check required fields
     if (!oldPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Old password and new password are required",
+        message: "Old and new passwords are required",
       });
     }
 
+    // Check new password length
     if (newPassword.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 6 characters",
+        message: "New password must be at least 6 characters long",
       });
     }
 
-    // Fetch customer with password field
+    // Find customer
     const customer = await Customer.findById(req.user._id);
 
-    // Verify old password
-    const isMatch = await customer.comparePassword(oldPassword);
-    if (!isMatch) {
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    // Check old password
+    const isOldPasswordCorrect =
+      await customer.comparePassword(oldPassword);
+
+    if (!isOldPasswordCorrect) {
       return res.status(401).json({
         success: false,
         message: "Old password is incorrect",
       });
     }
 
-    // Set new password (pre-save hook will hash it)
+    // Set new password
+    // customer.model.js pre-save middleware
+    // will automatically hash it
     customer.password = newPassword;
+
     await customer.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Password changed successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Change Password Error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Something went wrong",
+      error: error.message,
     });
   }
-};
+}
 
-module.exports = { register, login, getProfile, logout, changePassword };
+// ---------------------------------------------------
+// EXPORTS
+// ---------------------------------------------------
+
+module.exports = {
+  registerCustomer,
+  loginCustomer,
+  getMyProfile,
+  logoutCustomer,
+  changePassword,
+};

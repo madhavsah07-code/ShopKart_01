@@ -1,19 +1,25 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
-
+// Import routes
 const customerRoutes = require("./routes/customer.routes");
+const productRoutes = require("./routes/product.routes");
+const wishlistRoutes = require("./routes/wishlist.routes"); 
 
 const app = express();
 
 // Middleware
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
 // Routes
 app.use("/customers", customerRoutes);
+app.use("/products", productRoutes);
+app.use("/wishlist", wishlistRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "ShopKart API is running" });
