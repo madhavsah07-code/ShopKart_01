@@ -32,6 +32,11 @@ const customerSchema = new mongoose.Schema(
         default: [],                             // "Empty by default"
       },
     ],
+    cart:[
+      {
+        type: mongoose.Schema.Types.ObjectId,   // "It's an ID of the product in the cart"
+      }
+    ],
   },
   {
     timestamps: { createdAt: true, updatedAt: false },

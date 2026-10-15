@@ -66,15 +66,19 @@ const createProduct = async (req, res) => {
 // Supports: ?search=keyword&category=Electronics&sort=price_asc|price_desc
 const getAllProducts = async (req, res) => {
   try {
+    // Extract query parameters
     const { search, category, sort } = req.query;
 
     // Build dynamic query
     const query = {};
-
+    // Filter by search keyword if provided
     if (search) {
-      query.name = { $regex: search, $options: "i" };
+      query.name = { 
+        $regex: search,
+        $options: "i" 
+      };
     }
-
+    // Filter by category if provided
     if (category) {
       query.category = category;
     }

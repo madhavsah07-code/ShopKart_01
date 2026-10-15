@@ -53,12 +53,12 @@ const addToWishlist = async (req, res) => {
     }
 }
 
-
+// Get user's wishlist
 const getWishlist = async (req, res) => {
     try {
         const customer = await Customer
-        .findById(req.user._id)
-        .populate("wishlist");
+        .findById(req.user._id) // Use req.user._id to find the authenticated customer
+        .populate("wishlist"); // Populate the wishlist field with product details
 
         return res.status(200).json({
             success: true,
