@@ -4,10 +4,13 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 // Import routes
 const customerRoutes = require("./routes/customer.routes");
 const productRoutes = require("./routes/product.routes");
-const wishlistRoutes = require("./routes/wishlist.routes"); 
+const wishlistRoutes = require("./routes/wishlist.routes");
+const cartRoutes = require("./routes/cart.routes");
+const orderRoutes = require("./routes/order.routes");
 
 const app = express();
 
@@ -16,10 +19,19 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
+// Primary routes
 app.use("/customers", customerRoutes);
 app.use("/products", productRoutes);
 app.use("/wishlist", wishlistRoutes);
+app.use("/cart", cartRoutes);
+app.use("/orders", orderRoutes);
+
+// Optional /api prefixed aliases for compatibility
+app.use("/api/customers", customerRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "ShopKart API is running" });

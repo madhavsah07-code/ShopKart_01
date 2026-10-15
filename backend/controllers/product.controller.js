@@ -94,7 +94,7 @@ const getAllProducts = async (req, res) => {
 
     const products = await Product.find(query)
       .sort(sortOptions)
-      .select("name price category image stock");
+      .select("name price category image stock description");
 
     res.status(200).json({
       success: true,

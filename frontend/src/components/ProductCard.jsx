@@ -1,76 +1,83 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addToWishlist } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
-function ProductCard({ product }) {
+function ProductCard({ product, isWishlisted = false, onWishlistToggle }) {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [wishlisted, setWishlisted] = useState(isWishlisted);
+  const [feedback, setFeedback] = useState('');
 
-  // ==============================
-  // Add Product To Wishlist
-  // ==============================
-  const handleAddToWishlist = async () => {
+  const showFeedback = (msg) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(''), 2500);
+  };
+
+  const handleAddToWishlist = async (e) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: window.location.pathname } });
+      return;
+    }
+
     try {
-      const data = await addToWishlist(product._id);
-
-      console.log(
-        'Add to wishlist response:',
-        data
-      );
-
-      alert('Product added to wishlist ❤️');
+      if (onWishlistToggle) {
+        onWishlistToggle(product._id);
+        return;
+      }
+      await addToWishlist(product._id);
+      setWishlisted(true);
+      showFeedback('Saved to Wishlist ❤️');
     } catch (error) {
-      console.error(
-        'Add to wishlist error:',
-        error
-      );
-
       if (error.response?.status === 409) {
-        alert(
-          'Product is already in your wishlist'
-        );
-      } else if (error.response?.status === 401) {
-        alert('Please login first');
+        showFeedback('Already in Wishlist');
       } else {
-        alert(
-          'Failed to add product to wishlist'
-        );
+        showFeedback('Failed to update wishlist');
       }
     }
   };
 
-  // ==============================
-  // Format Price
-  // ==============================
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: window.location.pathname } });
+      return;
+    }
+
+    if (product.stock === 0) return;
+
+    setAddingToCart(true);
+    try {
+      await addToCart(product._id, 1);
+      showFeedback('Added to Cart! 🛒');
+    } catch (err) {
+      showFeedback(err.message || 'Could not add to cart');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(price);
+    }).format(price || 0);
   };
 
-  // ==============================
-  // Stock Status
-  // ==============================
   const getStockStatus = () => {
     if (product.stock === 0) {
-      return {
-        text: 'Out of Stock',
-        className: 'stock-out',
-      };
+      return { text: 'Out of Stock', className: 'stock-out' };
     }
-
     if (product.stock <= 5) {
-      return {
-        text: `Only ${product.stock} left!`,
-        className: 'stock-low',
-      };
+      return { text: `Only ${product.stock} left!`, className: 'stock-low' };
     }
-
-    return {
-      text: `${product.stock} units left`,
-      className: 'stock-in',
-    };
+    return { text: `In Stock (${product.stock})`, className: 'stock-in' };
   };
 
   const stockStatus = getStockStatus();
@@ -79,14 +86,11 @@ function ProductCard({ product }) {
     <div
       className="product-card"
       id={`product-card-${product._id}`}
+      onClick={() => navigate(`/products/${product._id}`)}
+      style={{ cursor: 'pointer' }}
     >
-
-      {/* ==============================
-          Product Image
-      ============================== */}
-
+      {/* Product Image */}
       <div className="product-card-image">
-
         <img
           src={product.image}
           alt={product.name}
@@ -96,78 +100,55 @@ function ProductCard({ product }) {
           }}
         />
 
-        <span className="product-card-category">
-          {product.category}
-        </span>
+        {product.category && (
+          <span className="product-card-category">{product.category}</span>
+        )}
 
         {/* Wishlist Button */}
         <button
-          className="wishlist-btn"
+          className={`wishlist-btn ${wishlisted ? 'active' : ''}`}
           onClick={handleAddToWishlist}
-          aria-label="Add to wishlist"
+          aria-label="Wishlist"
+          title="Save to Wishlist"
         >
-          ❤️
+          {wishlisted ? '❤️' : '🤍'}
         </button>
-
       </div>
 
-
-      {/* ==============================
-          Product Information
-      ============================== */}
-
+      {/* Product Body */}
       <div className="product-card-body">
-
-        <h3 className="product-card-name">
+        <h3 className="product-card-name" title={product.name}>
           {product.name}
         </h3>
 
-        <div className="product-card-price">
-          {formatPrice(product.price)}
-        </div>
+        <div className="product-card-price">{formatPrice(product.price)}</div>
 
-        <div
-          className={`product-card-stock ${stockStatus.className}`}
-        >
+        <div className={`product-card-stock ${stockStatus.className}`}>
           <span className="stock-dot"></span>
-
-          {stockStatus.text}
+          <span>{stockStatus.text}</span>
         </div>
 
+        {feedback && <div className="product-card-feedback">{feedback}</div>}
 
-        {/* View Details */}
-        <button
-          className="btn btn-view-details"
-          onClick={() =>
-            navigate(`/product/${product._id}`)
-          }
-          id={`view-details-${product._id}`}
-        >
-
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* Actions Row */}
+        <div className="product-card-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="btn btn-add-cart-card"
+            onClick={handleAddToCart}
+            disabled={product.stock === 0 || addingToCart}
           >
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-
-            <circle
-              cx="12"
-              cy="12"
-              r="3"
-            />
-          </svg>
-
-          View Details
-
-        </button>
-
+            {addingToCart ? (
+              <span className="btn-loading">
+                <span className="spinner spinner-sm"></span> Adding...
+              </span>
+            ) : product.stock === 0 ? (
+              'Out of Stock'
+            ) : (
+              'Add to Cart'
+            )}
+          </button>
+        </div>
       </div>
-
     </div>
   );
 }

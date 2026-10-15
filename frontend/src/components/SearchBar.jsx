@@ -1,16 +1,38 @@
-function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, onSortChange }) {
-  const categories = ['All Categories', 'Electronics', 'Fashion', 'Books', 'Home'];
+function SearchBar({
+  search,
+  onSearchChange,
+  category,
+  onCategoryChange,
+  sort,
+  onSortChange,
+  stockOnly,
+  onStockOnlyChange,
+  categories = [],
+}) {
+  const defaultCats = ['Electronics', 'Fashion', 'Footwear', 'Home', 'Books', 'General'];
+  const allCategories = Array.from(
+    new Set(['All Categories', ...(categories.length > 0 ? categories : defaultCats)])
+  );
 
   return (
     <div className="search-bar" id="search-bar">
       <div className="search-input-wrapper">
-        <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          className="search-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <input
           type="text"
-          placeholder="Search products..."
+          placeholder="Search products by name or keywords..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="search-input"
@@ -18,11 +40,20 @@ function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, o
         />
         {search && (
           <button
+            type="button"
             className="search-clear"
             onClick={() => onSearchChange('')}
             aria-label="Clear search"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -31,8 +62,18 @@ function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, o
       </div>
 
       <div className="search-filters">
+        {/* Category filter */}
         <div className="filter-select-wrapper">
-          <svg className="filter-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="filter-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
           <select
@@ -41,7 +82,7 @@ function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, o
             className="filter-select"
             id="category-filter"
           >
-            {categories.map((cat) => (
+            {allCategories.map((cat) => (
               <option key={cat} value={cat === 'All Categories' ? '' : cat}>
                 {cat}
               </option>
@@ -49,8 +90,18 @@ function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, o
           </select>
         </div>
 
+        {/* Sort filter */}
         <div className="filter-select-wrapper">
-          <svg className="filter-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="filter-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="12" y1="20" x2="12" y2="10" />
             <line x1="18" y1="20" x2="18" y2="4" />
             <line x1="6" y1="20" x2="6" y2="16" />
@@ -64,8 +115,22 @@ function SearchBar({ search, onSearchChange, category, onCategoryChange, sort, o
             <option value="">Newest First</option>
             <option value="price_asc">Price: Low → High</option>
             <option value="price_desc">Price: High → Low</option>
+            <option value="name_asc">Name: A → Z</option>
+            <option value="name_desc">Name: Z → A</option>
           </select>
         </div>
+
+        {/* In-stock toggle */}
+        {onStockOnlyChange && (
+          <label className="filter-stock-toggle">
+            <input
+              type="checkbox"
+              checked={stockOnly}
+              onChange={(e) => onStockOnlyChange(e.target.checked)}
+            />
+            <span>In Stock Only</span>
+          </label>
+        )}
       </div>
     </div>
   );

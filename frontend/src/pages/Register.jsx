@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerCustomer } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Register() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     phone: '',
   });
+  const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const validate = () => {
     const newErrors = {};
@@ -23,8 +32,8 @@ function Register() {
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.password) {
@@ -33,10 +42,11 @@ function Register() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+    const cleanPhone = formData.phone.replace(/\D/g, '');
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
+    } else if (cleanPhone.length !== 10) {
+      newErrors.phone = 'Please enter a valid 10-digit Indian mobile number';
     }
 
     setErrors(newErrors);
@@ -60,7 +70,12 @@ function Register() {
     setApiError('');
 
     try {
-      await registerCustomer(formData);
+      await registerCustomer({
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        phone: formData.phone.trim(),
+      });
       navigate('/login', { state: { registered: true } });
     } catch (err) {
       const message =
@@ -76,16 +91,12 @@ function Register() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="auth-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="16" y1="11" x2="22" y2="11" />
-              </svg>
-            </div>
+            <Link to="/" className="auth-brand-link">
+              <span className="auth-brand-logo">🛒</span>
+              <span className="auth-brand-title">ShopKart</span>
+            </Link>
             <h1>Create Account</h1>
-            <p>Join ShopKart and start shopping today</p>
+            <p>Join ShopKart to browse deals and checkout in seconds</p>
           </div>
 
           {apiError && (
@@ -111,7 +122,7 @@ function Register() {
                   type="text"
                   id="fullName"
                   name="fullName"
-                  placeholder="John Doe"
+                  placeholder="e.g. Priya Patel"
                   value={formData.fullName}
                   onChange={handleChange}
                   autoComplete="name"
@@ -131,7 +142,7 @@ function Register() {
                   type="email"
                   id="email"
                   name="email"
-                  placeholder="john@example.com"
+                  placeholder="name@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="email"
@@ -141,14 +152,14 @@ function Register() {
             </div>
 
             <div className={`form-group ${errors.password ? 'has-error' : ''}`}>
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">Password (min 6 characters)</label>
               <div className="input-wrapper">
                 <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
                 <input
-                  type="password"
+                  type={showPwd ? 'text' : 'password'}
                   id="password"
                   name="password"
                   placeholder="••••••••"
@@ -156,12 +167,20 @@ function Register() {
                   onChange={handleChange}
                   autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPwd(!showPwd)}
+                  aria-label="Toggle password visibility"
+                >
+                  {showPwd ? '👁️' : '🙈'}
+                </button>
               </div>
               {errors.password && <span className="error-text">{errors.password}</span>}
             </div>
 
             <div className={`form-group ${errors.phone ? 'has-error' : ''}`}>
-              <label htmlFor="phone">Phone Number</label>
+              <label htmlFor="phone">Mobile Phone (10 digits)</label>
               <div className="input-wrapper">
                 <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -171,6 +190,7 @@ function Register() {
                   id="phone"
                   name="phone"
                   placeholder="9876543210"
+                  maxLength={10}
                   value={formData.phone}
                   onChange={handleChange}
                   autoComplete="tel"
@@ -191,7 +211,7 @@ function Register() {
                   Creating Account...
                 </span>
               ) : (
-                'Create Account'
+                'Create Account ➔'
               )}
             </button>
           </form>
@@ -201,6 +221,11 @@ function Register() {
               Already have an account?{' '}
               <Link to="/login" className="auth-link">
                 Sign in
+              </Link>
+            </p>
+            <p style={{ marginTop: '0.5rem' }}>
+              <Link to="/" className="auth-link" style={{ fontSize: '0.85rem' }}>
+                ← Return to Store
               </Link>
             </p>
           </div>
